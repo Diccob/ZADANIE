@@ -1,7 +1,6 @@
 import random
 import asyncio
-from datetime import datetime, timedelta
-from datetime import timezone, timedelta
+from datetime import datetime, timedelta, timezone
 
 from aiogram import Bot, Dispatcher, F
 from aiogram.filters import Command
@@ -167,20 +166,15 @@ async def smoke(callback: CallbackQuery):
     today = await get_day_count(user_id, 0)
     month = await get_month_count(user_id)
 
-# Цена одной затяжки
-    cost_per_puff = round(
-        MONTHLY_COST / PUFFS_PER_MONTH,
-        4
-    )
 
 # Потрачено
     spent_today = round(
-        today * cost_per_puff,
+        today * COST_PER_PUFF,
         2
     )
 
     spent_month = round(
-        month * cost_per_puff,
+        month * COST_PER_PUFF,
         2
     )
 
@@ -188,7 +182,7 @@ async def smoke(callback: CallbackQuery):
     # СООБЩЕНИЕ ПОЛЬЗОВАТЕЛЮ
     # =========================
 
-    await callback.message.edit_text(
+    await callback.message.answer(
         f"🚬 Записал\n\n"
         f"📅 Сегодня: {today}\n"
         f"🗓 За месяц: {month}\n\n"
@@ -215,9 +209,6 @@ async def smoke(callback: CallbackQuery):
     await callback.answer()
 
 
-# =========================
-# ЕЖЕДНЕВНАЯ СВОДКА
-# =========================
 
 # =========================
 # ЕЖЕДНЕВНАЯ СВОДКА
