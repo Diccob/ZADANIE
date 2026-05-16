@@ -151,27 +151,69 @@ async def smoke(callback: CallbackQuery):
         spent_today = round(today * COST_PER_PUFF, 2)
         spent_month = round(month * COST_PER_PUFF, 2)
 
-        # Обновление кнопки
-        try:
-            await callback.message.edit_text(
-                f"🚬 Записал\n\n"
-                f"📅 Сегодня: {today}\n"
-                f"🗓 За месяц: {month}\n\n"
-                f"💸 Потрачено сегодня: {spent_today}₽\n"
-                f"💰 Потрачено за месяц: {spent_month}₽",
-                reply_markup=main_keyboard()
-            )
-        except Exception:
-            pass
+        # Базовый текст статистики
+        text = (
+            f"🚬 Записал\n\n"
+            f"📅 Сегодня: {today}\n"
+            f"🗓 За месяц: {month}\n\n"
+            f"💸 Потрачено сегодня: {spent_today}₽\n"
+            f"💰 Потрачено за месяц: {spent_month}₽"
+        )
+
+        alert_text = None
+        # Всплывающее уведомление строго на 100-ю затяжку
+        if today == 100:
+            alert_text = "🚨 СТОП! Это твоя 100-я затяжка за сегодня! Это очень плохо, тебе нужно сдерживаться!"
+
+        # ПРОВЕРКА НА ЛИМИТ ВАРНИНГА (100+ затяжек)
+        if today >= 100:
+            text += "\n\n⚠️ <b>ЛИМИТ ПРЕВЫШЕН!</b>\n100+ затяжек за день — это очень плохо. Твоему организму тяжело, постарайся сдерживать себя!"
+            photo_path = "images/puff.jpg"
+
+            try:
+                with open(photo_path, "rb") as img:
+                    # Если сообщение уже является картинкой (например, 101-я затяжка), просто меняем описание
+                    if callback.message.photo:
+                        await callback.message.edit_caption(
+                            caption=text,
+                            reply_markup=main_keyboard(),
+                            parse_mode="HTML"
+                        )
+                    # Если это текстовое сообщение (переход с 99 на 100), удаляем текст и шлем фото
+                    else:
+                        try:
+                            await callback.message.delete()
+                        except Exception:
+                            pass
+                        
+                        await callback.message.answer_photo(
+                            photo=img,
+                            caption=text,
+                            reply_markup=main_keyboard(),
+                            parse_mode="HTML"
+                        )
+            except FileNotFoundError:
+                # На случай, если забыл загрузить puff.jpg на хостинг — бот продолжит работать текстом
+                try:
+                    await callback.message.edit_text(text, reply_markup=main_keyboard(), parse_mode="HTML")
+                except Exception:
+                    pass
+        else:
+            # ОБЫЧНЫЙ РЕЖИМ (до 100 затяжек)
+            try:
+                await callback.message.edit_text(text, reply_markup=main_keyboard(), parse_mode="HTML")
+            except Exception:
+                pass
 
         # Уведомление админу
+        admin_warning_prefix = "🚨" if today >= 100 else "📝"
         try:
             await bot.send_message(
                 OWNER_ID,
-                f"🚨 Новая затяжка\n\n"
+                f"{admin_warning_prefix} Новая затяжка\n\n"
                 f"👤 Пользователь: {first_name}\n"
                 f"📎 Username: @{username}\n\n"
-                f"🚬 Сегодня: {today}\n"
+                f"🚬 Сегодня: {today} {'(ПРЕВЫШЕНИЕ!)' if today >= 100 else ''}\n"
                 f"📅 За месяц: {month}\n"
                 f"💸 Сегодня потрачено: {spent_today}₽\n"
                 f"⏰ Время: {ekb_now().strftime('%H:%M')}"
@@ -179,7 +221,9 @@ async def smoke(callback: CallbackQuery):
         except Exception as e:
             print(f"Не удалось отправить уведомление админу: {e}")
 
-        await callback.answer()
+        # Закрываем часы анимации на кнопке Telegram
+        await callback.answer(text=alert_text, show_alert=True if alert_text else False)
+
     except Exception as e:
         print(f"Ошибка при обработке затяжки: {e}")
 
@@ -350,7 +394,6 @@ async def weekly_report_loop():
 async def reminder_loop():
     while True:
         try:
-            # Даём боту «отдохнуть» перед следующим кругом
             await asyncio.sleep(10800) # 3 часа
             
             users = await get_all_users()
@@ -379,12 +422,9 @@ async def main():
         asyncio.create_task(reminder_loop())
         asyncio.create_task(weekly_report_loop())
 
-        # Просто удаляем вебхук без сброса очереди обновлений
         await bot.delete_webhook()
-        
         print("Бот успешно запущен и готов к работе!")
 
-        # Запускаем пуллинг с обработкой ошибок
         await dp.start_polling(bot)
 
     except Exception as e:
