@@ -63,31 +63,10 @@ def ekb_now():
     return datetime.now(EKB_TZ)
 
 
-async def get_today_count(user_id):
+async def get_day_count(user_id, days_ago=0):
 
-    today = ekb_now().strftime("%Y-%m-%d")
-
-    async with aiosqlite.connect(DB_NAME) as db:
-
-        cursor = await db.execute(
-            """
-            SELECT COUNT(*)
-            FROM smokes
-            WHERE user_id = ?
-            AND date LIKE ?
-            """,
-            (user_id, f"{today}%")
-        )
-
-        result = await cursor.fetchone()
-
-        return result[0]
-
-
-async def get_yesterday_count(user_id):
-
-    yesterday = (
-        ekb_now() - timedelta(days=1)
+    target_day = (
+        ekb_now() - timedelta(days=days_ago)
     ).strftime("%Y-%m-%d")
 
     async with aiosqlite.connect(DB_NAME) as db:
@@ -99,45 +78,14 @@ async def get_yesterday_count(user_id):
             WHERE user_id = ?
             AND date LIKE ?
             """,
-            (user_id, f"{yesterday}%")
+            (user_id, f"{target_day}%")
         )
 
         result = await cursor.fetchone()
 
         return result[0]
 
-
 async def get_month_count(user_id):
-    async def get_week_count(user_id, weeks_ago=0):
-        start_date = (
-            ekb_now() - timedelta(days=7 * weeks_ago)
-        )
-
-        total = 0
-
-        async with aiosqlite.connect(DB_NAME) as db:
-
-            for i in range(7):
-
-                day = (
-                    start_date - timedelta(days=i)
-                ).strftime("%Y-%m-%d")
-
-                cursor = await db.execute(
-                    """
-                    SELECT COUNT(*)
-                    FROM smokes
-                    WHERE user_id = ?
-                    AND date LIKE ?
-                    """,
-                    (user_id, f"{day}%")
-                )
-
-                result = await cursor.fetchone()
-
-                total += result[0]
-
-        return total
 
     month = ekb_now().strftime("%Y-%m")
 
@@ -157,6 +105,37 @@ async def get_month_count(user_id):
 
         return result[0]
 
+async def get_week_count(user_id, weeks_ago=0):
+
+    start_date = (
+        ekb_now() - timedelta(days=7 * weeks_ago)
+    )
+
+    total = 0
+
+    async with aiosqlite.connect(DB_NAME) as db:
+
+        for i in range(7):
+
+            day = (
+                start_date - timedelta(days=i)
+            ).strftime("%Y-%m-%d")
+
+            cursor = await db.execute(
+                """
+                SELECT COUNT(*)
+                FROM smokes
+                WHERE user_id = ?
+                AND date LIKE ?
+                """,
+                (user_id, f"{day}%")
+            )
+
+            result = await cursor.fetchone()
+
+            total += result[0]
+
+    return total
 
 async def get_all_users():
 
@@ -212,7 +191,7 @@ async def smoke(callback: CallbackQuery):
 
         await db.commit()
 
-    today = await get_today_count(user_id)
+    today = await get_day_count(user_id, 0)
     month = await get_month_count(user_id)
 
 # Цена одной затяжки
@@ -284,11 +263,11 @@ async def daily_report_loop():
 
             for user_id in users:
 
-                today = await get_today_count(user_id)
-                yesterday = await get_yesterday_count(user_id)
+                today = await get_day_count(user_id, 1)
+                yesterday = await get_day_count(user_id, 2)
 
                 # Если вчера нет данных
-                if yesterday == 0:
+                if yesterday == 0 and today != 0:
                     yesterday = 400
 
                 difference = today - yesterday
