@@ -454,15 +454,15 @@ async def weekly_report_loop():
 
             for user_id in users:
 
-               current_week = await get_week_count(
-                   user_id,
-                   1
-               )
+                current_week = await get_week_count(
+                    user_id,
+                    1
+                )
 
-               previous_week = await get_week_count(
-                   user_id,
-                   2
-               )
+                previous_week = await get_week_count(
+                    user_id,
+                    2
+                )
 
                 # если прошлой недели нет
                 if previous_week == 0:
