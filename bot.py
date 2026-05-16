@@ -101,13 +101,18 @@ async def smoke(callback: CallbackQuery):
         reply_markup=main_keyboard()
     )
 
+    username = callback.from_user.username
+    first_name = callback.from_user.first_name
+
     await bot.send_message(
         OWNER_ID,
-        f"⚠️ Друг закурил\n\n"
-        f"Сегодня: {today}\n"
-        f"За месяц: {month}\n"
-        f"Время: {datetime.now().strftime('%H:%M')}"
-    )
+        f"🚨 Новая затяжка\n\n"
+        f"👤 Пользователь: {first_name}\n"
+        f"📎 Username: @{username}\n\n"
+        f"🚬 Сегодня: {today}\n"
+        f"📅 За месяц: {month}\n"
+        f"⏰ Время: {datetime.now().strftime('%H:%M')}"
+)
 
     await callback.answer()
 
