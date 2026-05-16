@@ -550,9 +550,9 @@ async def on_startup(app):
     await bot.set_webhook(
         WEBHOOK_URL
     )
-info = await bot.get_webhook_info()
+    info = await bot.get_webhook_info()
 
-print(info)
+    print(info)
 
 
 async def on_shutdown(app):
