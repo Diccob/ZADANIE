@@ -21,7 +21,6 @@ from database import init_db, DB_NAME
 # =========================
 
 bot = Bot(token=TOKEN)
-awaiting_updates = False
 dp = Dispatcher()
 
 # Екатеринбургское время
@@ -483,13 +482,24 @@ async def main():
 
     print("Бот запущен")
 
-    asyncio.create_task(daily_report_loop())
-    asyncio.create_task(month_report_loop())
-    asyncio.create_task(reminder_loop())
-    asyncio.create_task(weekly_report_loop())
-
     await bot.delete_webhook(
         drop_pending_updates=True
+    )
+
+    daily_task = asyncio.create_task(
+        daily_report_loop()
+    )
+
+    month_task = asyncio.create_task(
+        month_report_loop()
+    )
+
+    reminder_task = asyncio.create_task(
+        reminder_loop()
+    )
+
+    weekly_task = asyncio.create_task(
+        weekly_report_loop()
     )
 
     try:
@@ -497,5 +507,10 @@ async def main():
         await dp.start_polling(bot)
 
     finally:
+
+        daily_task.cancel()
+        month_task.cancel()
+        reminder_task.cancel()
+        weekly_task.cancel()
 
         await bot.session.close()
