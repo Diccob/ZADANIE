@@ -1,6 +1,6 @@
 import aiosqlite
 
-DB_NAME = "/home/user/database/smoke.db"
+DB_NAME = "smoke.db"
 
 
 async def init_db():
