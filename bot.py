@@ -169,10 +169,11 @@ async def smoke(callback: CallbackQuery):
     spent_month = round(month * COST_PER_PUFF, 2)
 
     # =========================
-    # ИЗМЕНЕНИЕ СООБЩЕНИЯ ПОЛЬЗОВАТЕЛЮ
+    # РЕДАКТИРУЕМ СТАРЕНЬКОЕ СООБЩЕНИЕ
     # =========================
-    # Используем edit_text вместо answer, чтобы обновить старое сообщение
     try:
+        # ВНИМАНИЕ: Здесь должен быть ТОЛЬКО edit_text. 
+        # Если здесь написано answer — бот будет спамить новыми сообщениями!
         await callback.message.edit_text(
             text=(
                 f"🚬 Записал\n\n"
@@ -181,15 +182,14 @@ async def smoke(callback: CallbackQuery):
                 f"💸 Потрачено сегодня: {spent_today}₽\n"
                 f"💰 Потрачено за месяц: {spent_month}₽"
             ),
-            reply_markup=main_keyboard()
+            reply_markup=main_keyboard() # Кнопка возвращается в это же отредактированное сообщение
         )
-    except Exception:
-        # На случай, если текст и цифры вообще не изменились, Telegram выдаст ошибку.
-        # Просто игнорируем её, чтобы бот не падал.
+    except Exception as e:
+        # Игнорируем ошибку Telegram "Message is not modified", если данные не изменились
         pass
 
     # =========================
-    # УВЕДОМЛЕНИЕ АДМИНУ (оставляем как есть, это же админу)
+    # УВЕДОМЛЕНИЕ АДМИНУ
     # =========================
     try:
         await bot.send_message(
@@ -205,7 +205,7 @@ async def smoke(callback: CallbackQuery):
     except Exception as e:
         print(f"Не удалось отправить уведомление админу: {e}")
 
-    # Обязательно гасим часики на кнопке
+    # Гасим часики анимации на кнопке
     await callback.answer()
 
 
