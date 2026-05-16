@@ -4,7 +4,9 @@ DB_NAME = "smoke.db"
 
 
 async def init_db():
+
     async with aiosqlite.connect(DB_NAME) as db:
+
         await db.execute("""
         CREATE TABLE IF NOT EXISTS smokes (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -12,4 +14,5 @@ async def init_db():
             date TEXT
         )
         """)
+
         await db.commit()
