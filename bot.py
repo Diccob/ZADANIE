@@ -477,40 +477,21 @@ async def weekly_report_loop():
 # =========================
 
 async def main():
-
+    # Инициализируем БД
     await init_db()
 
-    print("Бот запущен")
+    print("Бот успешно запущен и слушает сервер...")
 
-    await bot.delete_webhook(
-        drop_pending_updates=True
-    )
+    # Запускаем фоновые задачи
+    asyncio.create_task(daily_report_loop())
+    asyncio.create_task(month_report_loop())
+    asyncio.create_task(reminder_loop())
+    asyncio.create_task(weekly_report_loop())
 
-    daily_task = asyncio.create_task(
-        daily_report_loop()
-    )
-
-    month_task = asyncio.create_task(
-        month_report_loop()
-    )
-
-    reminder_task = asyncio.create_task(
-        reminder_loop()
-    )
-
-    weekly_task = asyncio.create_task(
-        weekly_report_loop()
-    )
+    # Просто удаляем вебхук без жесткой очистки очереди обновлений
+    await bot.delete_webhook()
 
     try:
-
         await dp.start_polling(bot)
-
     finally:
-
-        daily_task.cancel()
-        month_task.cancel()
-        reminder_task.cancel()
-        weekly_task.cancel()
-
         await bot.session.close()
