@@ -471,19 +471,25 @@ async def weekly_report_loop():
         await asyncio.sleep(15)
 
 
+
 # =========================
 # MAIN
 # =========================
 
 async def main():
+
     await init_db()
+
     print("Бот запущен")
 
-    # Запускаем фоновые задачи
     asyncio.create_task(daily_report_loop())
     asyncio.create_task(month_report_loop())
     asyncio.create_task(reminder_loop())
     asyncio.create_task(weekly_report_loop())
+
+    await bot.delete_webhook(
+        drop_pending_updates=True
+    )
 
     await dp.start_polling(bot)
 
