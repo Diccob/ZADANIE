@@ -364,53 +364,36 @@ async def month_report_loop():
 # =========================
 
 async def reminder_loop():
-
     while True:
+        # Даём боту «отдохнуть» перед следующим кругом напоминаний
+        await asyncio.sleep(10800) # 3 часа (лучше спать НАЧАЛЕ цикла)
 
         users = await get_all_users()
-
         for user_id in users:
-
             try:
-
                 await bot.send_message(
                     user_id,
                     "⏰ Не забывай отмечать затяжки"
                 )
-
+                # Микро-пауза между пользователями, чтобы Telegram не забанил за спам
+                await asyncio.sleep(0.05) 
             except Exception as e:
+                print(f"Ошибка отправки напоминания пользователю {user_id}: {e}")
 
-                print(
-                    f"Ошибка отправки "
-                    f"напоминания: {e}"
-                )
 
-        # 3 часа
-        await asyncio.sleep(10800)
 # =========================
 # НЕДЕЛЬНЫЙ ОТЧЁТ
 # =========================
 
 async def get_week_count(user_id, weeks_ago=0):
-
     now = ekb_now()
-
     start_of_week = now - timedelta(days=now.weekday())
-
-    target_week_start = (
-        start_of_week - timedelta(weeks=weeks_ago)
-    )
+    target_week_start = start_of_week - timedelta(weeks=weeks_ago)
 
     total = 0
-
     async with aiosqlite.connect(DB_NAME) as db:
-
         for i in range(7):
-
-            day = (
-                target_week_start + timedelta(days=i)
-            ).strftime("%Y-%m-%d")
-
+            day = (target_week_start + timedelta(days=i)).strftime("%Y-%m-%d")
             cursor = await db.execute(
                 """
                 SELECT COUNT(*)
@@ -420,110 +403,77 @@ async def get_week_count(user_id, weeks_ago=0):
                 """,
                 (user_id, f"{day}%")
             )
-
             result = await cursor.fetchone()
-
             total += result[0]
-
+            
     return total
 
 
 async def weekly_report_loop():
-
     while True:
-
         now = ekb_now()
 
+        # Понедельник, 00:00
         if (
             now.weekday() == 0 and
             now.hour == 0 and
             now.minute == 0
         ):
-
             users = await get_all_users()
 
             for user_id in users:
-
-                current_week = await get_week_count(
-                    user_id,
-                    1
-                )
-
-                previous_week = await get_week_count(
-                    user_id,
-                    2
-                )
+                # 1 неделя назад (которая только что закончилась)
+                current_week = await get_week_count(user_id, 1)
+                # 2 недели назад
+                previous_week = await get_week_count(user_id, 2)
 
                 if previous_week == 0:
-                    previous_week = 3900
+                    previous_week = BASELINE_WEEKLY_PUFFS # Используем константу из начала кода
 
-                difference = (
-                    current_week - previous_week
-                )
+                difference = current_week - previous_week
 
-                percent = round(
-                    (
-                        difference / previous_week
-                    ) * 100,
-                    1
-                )
+                percent = round((difference / previous_week) * 100, 1)
 
                 if percent < 0:
-
-                    result = (
-                        f"🔥 На "
-                        f"{abs(percent)}% "
-                        f"меньше затяжек"
-                    )
-
+                    result = f"🔥 На {abs(percent)}% меньше затяжек"
                 elif percent > 0:
-
-                    result = (
-                        f"⚠️ На "
-                        f"{percent}% "
-                        f"больше затяжек"
-                    )
-
+                    result = f"⚠️ На {percent}% больше затяжек"
                 else:
+                    result = "➖ Без изменений"
 
-                    result = (
-                        "➖ Без изменений"
-                    )
-
+                # Сделали текст более понятным для человека в понедельник утром
                 text = (
                     f"📈 Недельная статистика\n\n"
-                    f"🚬 Эта неделя: "
-                    f"{current_week}\n"
-
-                    f"🚬 Прошлая неделя: "
-                    f"{previous_week}\n\n"
-
+                    f"🚬 Прошедшая неделя: {current_week}\n"
+                    f"🚬 Позапрошлая неделя: {previous_week}\n\n"
                     f"{result}"
                 )
 
-                await bot.send_message(
-                    user_id,
-                    text
-                )
+                try:
+                    await bot.send_message(user_id, text)
+                    await bot.send_message(
+                        OWNER_ID,
+                        f"📨 Недельный отчёт\n\n{text}"
+                    )
+                    await asyncio.sleep(0.05)
+                except Exception as e:
+                    print(f"Ошибка отправки недельного отчёта: {e}")
 
-                await bot.send_message(
-                    OWNER_ID,
-                    f"📨 Недельный отчёт\n\n{text}"
-                )
-
+            # Защита от повторного срабатывания в ту же минуту
             await asyncio.sleep(60)
 
         await asyncio.sleep(15)
+
+
 # =========================
 # MAIN
 # =========================
 
 async def main():
-
     await init_db()
-
     print("Бот запущен")
 
+    # Запускаем фоновые задачи
     asyncio.create_task(daily_report_loop())
     asyncio.create_task(month_report_loop())
     asyncio.create_task(reminder_loop())
