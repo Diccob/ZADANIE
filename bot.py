@@ -28,7 +28,7 @@ bot = Bot(token=TOKEN)
 dp = Dispatcher()
 WEBHOOK_PATH = "/webhook"
 WEBHOOK_URL = (
-    "http://nl8.bothost.ru/api/webhooks/github?token=4aedf7222f6bfbe58bf645e69a809de976523f564271f5ce"
+    "https://nl8.bothost.ru/api/webhooks/github?token=4aedf7222f6bfbe58bf645e69a809de976523f564271f5ce"
 )
 
 WEB_SERVER_HOST = "0.0.0.0"
