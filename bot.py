@@ -214,7 +214,8 @@ async def smoke(callback: CallbackQuery):
     )
 
     await callback.answer()
-
+    except Exception:
+        pass
 
 # =========================
 # ЕЖЕДНЕВНАЯ СВОДКА
