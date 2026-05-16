@@ -109,7 +109,6 @@ async def get_yesterday_count(user_id):
 
 async def get_month_count(user_id):
     async def get_week_count(user_id, weeks_ago=0):
-
         start_date = (
             ekb_now() - timedelta(days=7 * weeks_ago)
         )
