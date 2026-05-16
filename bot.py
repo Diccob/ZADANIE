@@ -1,3 +1,4 @@
+import random
 import asyncio
 from datetime import datetime, timedelta
 from datetime import timezone, timedelta
@@ -267,12 +268,17 @@ async def smoke(callback: CallbackQuery):
 # ЕЖЕДНЕВНАЯ СВОДКА
 # =========================
 
+# =========================
+# ЕЖЕДНЕВНАЯ СВОДКА
+# =========================
+
 async def daily_report_loop():
 
     while True:
 
         now = ekb_now()
 
+        # 00:00
         if now.hour == 0 and now.minute == 0:
 
             users = await get_all_users()
@@ -282,43 +288,84 @@ async def daily_report_loop():
                 today = await get_today_count(user_id)
                 yesterday = await get_yesterday_count(user_id)
 
+                # Если вчера нет данных
+                if yesterday == 0:
+                    yesterday = 400
+
                 difference = today - yesterday
+
+                percent = round(
+                    (abs(difference) / yesterday) * 100,
+                    1
+                )
+
+                # =========================
+                # ЛОГИКА
+                # =========================
 
                 if difference < 0:
 
-                    diff_text = (
-                        f"🔥 Меньше на "
-                        f"{abs(difference)} затяжек"
+                    result = (
+                        f"🔥 На {percent}% "
+                        f"меньше затяжек"
                     )
+
+                    photo = "images/win.jpg"
 
                 elif difference > 0:
 
-                    diff_text = (
-                        f"⚠️ Больше на "
-                        f"{difference} затяжек"
+                    result = (
+                        f"⚠️ На {percent}% "
+                        f"больше затяжек"
                     )
+
+                    photo = "images/lose.jpg"
 
                 else:
 
-                    diff_text = (
+                    result = (
                         "➖ Столько же, сколько вчера"
                     )
+
+                    photo = "images/equal.jpg"
+
+                # =========================
+                # ТЕКСТ
+                # =========================
 
                 text = (
                     f"📊 Сводка за день\n\n"
                     f"🚬 Сегодня: {today}\n"
                     f"🚬 Вчера: {yesterday}\n\n"
-                    f"{diff_text}"
+                    f"{result}"
                 )
 
-                # Пользователю
-                await bot.send_message(user_id, text)
+                # =========================
+                # ПОЛЬЗОВАТЕЛЬ
+                # =========================
 
-                # Админу
-                await bot.send_message(
-                    OWNER_ID,
-                    f"📨 Отчёт пользователя\n\n{text}"
-                )
+                with open(photo, "rb") as img:
+
+                    await bot.send_photo(
+                        user_id,
+                        photo=img,
+                        caption=text
+                    )
+
+                # =========================
+                # АДМИН
+                # =========================
+
+                with open(photo, "rb") as img:
+
+                    await bot.send_photo(
+                        OWNER_ID,
+                        photo=img,
+                        caption=(
+                            f"📨 Отчёт пользователя\n\n"
+                            f"{text}"
+                        )
+                    )
 
             # защита от спама
             await asyncio.sleep(60)
