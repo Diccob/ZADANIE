@@ -1,7 +1,11 @@
 import random
 import asyncio
 from datetime import datetime, timedelta, timezone
-
+from aiohttp import web
+from aiogram.webhook.aiohttp_server import (
+    SimpleRequestHandler,
+    setup_application
+)
 from aiogram import Bot, Dispatcher, F
 from aiogram.filters import Command
 from aiogram.types import (
@@ -22,6 +26,13 @@ from database import init_db, DB_NAME
 
 bot = Bot(token=TOKEN)
 dp = Dispatcher()
+WEBHOOK_PATH = "/webhook"
+WEBHOOK_URL = (
+    "http://nl8.bothost.ru/api/webhooks/github?token=4aedf7222f6bfbe58bf645e69a809de976523f564271f5ce"
+)
+
+WEB_SERVER_HOST = "0.0.0.0"
+WEB_SERVER_PORT = 8080
 
 # Екатеринбургское время
 EKB_TZ = timezone(timedelta(hours=5))
@@ -514,61 +525,68 @@ async def heartbeat():
         await asyncio.sleep(60)
 
 
-# =========================
-# MAIN
-# =========================
-
-async def main():
+async def on_startup():
 
     await init_db()
 
     print("Бот запущен")
 
-    await bot.delete_webhook(
-        drop_pending_updates=True
-    )
-
-    # =========================
-    # BACKGROUND TASKS
-    # =========================
-
-    daily_task = asyncio.create_task(
+    asyncio.create_task(
         daily_report_loop()
     )
 
-    month_task = asyncio.create_task(
+    asyncio.create_task(
         month_report_loop()
     )
 
-    reminder_task = asyncio.create_task(
+    asyncio.create_task(
         reminder_loop()
     )
 
-    weekly_task = asyncio.create_task(
+    asyncio.create_task(
         weekly_report_loop()
     )
 
-    heartbeat_task = asyncio.create_task(
-        heartbeat()
+    await bot.set_webhook(
+        WEBHOOK_URL
     )
 
-    # =========================
-    # POLLING
-    # =========================
 
-    try:
+async def on_shutdown():
 
-        await dp.start_polling(bot)
+    await bot.delete_webhook()
 
-    finally:
+    await bot.session.close()
 
-        daily_task.cancel()
-        month_task.cancel()
-        reminder_task.cancel()
-        weekly_task.cancel()
-        heartbeat_task.cancel()
 
-        await bot.session.close()
+async def main():
+
+    app = web.Application()
+
+    SimpleRequestHandler(
+        dispatcher=dp,
+        bot=bot
+    ).register(app, path=WEBHOOK_PATH)
+
+    setup_application(
+        app,
+        dp,
+        bot=bot
+    )
+
+    app.on_startup.append(
+        lambda _: on_startup()
+    )
+
+    app.on_shutdown.append(
+        lambda _: on_shutdown()
+    )
+
+    web.run_app(
+        app,
+        host=WEB_SERVER_HOST,
+        port=WEB_SERVER_PORT
+    )
 
 
 if __name__ == "__main__":
