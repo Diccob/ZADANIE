@@ -196,7 +196,8 @@ async def smoke(callback: CallbackQuery):
             f"💰 Потрачено за месяц: {spent_month}₽",
             reply_markup=main_keyboard()
         )
-
+    except Exception:
+        pass
 
     # =========================
     # УВЕДОМЛЕНИЕ АДМИНУ
@@ -214,8 +215,6 @@ async def smoke(callback: CallbackQuery):
     )
 
     await callback.answer()
-    except Exception:
-        pass
 
 # =========================
 # ЕЖЕДНЕВНАЯ СВОДКА
