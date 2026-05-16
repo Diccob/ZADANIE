@@ -306,15 +306,16 @@ async def on_startup(app):
     try:
         await bot.set_webhook(WEBHOOK_URL, drop_pending_updates=True)
         info = await bot.get_webhook_info()
-        print(f"Webhook установлен: {info.url}")
+        print(f"✓ Webhook установлен: {info.url}")
     except Exception as e:
-        print(f"Ошибка установки webhook: {e}")
+        print(f"✗ Ошибка установки webhook: {e}")
 
 async def on_shutdown(app):
     print("Бот останавливается")
-    await bot.delete_webhook()
-    await dp.shutdown()  # 🔥 Корректное завершение dispatcher
+    
+    await bot.delete_webhook(drop_pending_updates=True)
     await bot.session.close()
+    # Больше ничего не нужно — aiogram сам завершит диспетчер
 
 def main():
     app = web.Application()
