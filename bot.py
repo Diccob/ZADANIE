@@ -29,6 +29,8 @@ EKB_TZ = timezone(timedelta(hours=5))
 # Сколько рублей тратится в месяц
 MONTHLY_COST = 400
 
+# Сколько примерно затяжек с одной жижки
+PUFFS_PER_MONTH = 6000
 
 # =========================
 # КЛАВИАТУРА
@@ -177,7 +179,11 @@ async def smoke(callback: CallbackQuery):
     today = await get_today_count(user_id)
     month = await get_month_count(user_id)
 
-    spent_today = round((today / 30) * MONTHLY_COST, 2)
+    cost_per_puff = MONTHLY_COST / PUFFS_PER_MONTH
+
+    spent_today = round(today * cost_per_puff, 2)
+
+    spent_month = round(month * cost_per_puff, 2)
 
     # =========================
     # СООБЩЕНИЕ ПОЛЬЗОВАТЕЛЮ
@@ -188,7 +194,7 @@ async def smoke(callback: CallbackQuery):
         f"📅 Сегодня: {today}\n"
         f"🗓 За месяц: {month}\n\n"
         f"💸 Потрачено сегодня: {spent_today}₽\n"
-        f"💰 Потрачено за месяц: {MONTHLY_COST}₽",
+        f"💰 Потрачено за месяц: {spent_month}₽",
         reply_markup=main_keyboard()
     )
 
