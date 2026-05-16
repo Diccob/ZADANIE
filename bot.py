@@ -36,7 +36,7 @@ COST_PER_PUFF = round(
     MONTHLY_COST / PUFFS_PER_MONTH,
     4
 )
-
+BASELINE_WEEKLY_PUFFS = 3900
 # =========================
 # КЛАВИАТУРА
 # =========================
@@ -107,6 +107,37 @@ async def get_yesterday_count(user_id):
 
 
 async def get_month_count(user_id):
+    async def get_week_count(user_id, weeks_ago=0):
+
+    start_date = (
+        ekb_now() - timedelta(days=7 * weeks_ago)
+    )
+
+    total = 0
+
+    async with aiosqlite.connect(DB_NAME) as db:
+
+        for i in range(7):
+
+            day = (
+                start_date - timedelta(days=i)
+            ).strftime("%Y-%m-%d")
+
+            cursor = await db.execute(
+                """
+                SELECT COUNT(*)
+                FROM smokes
+                WHERE user_id = ?
+                AND date LIKE ?
+                """,
+                (user_id, f"{day}%")
+            )
+
+            result = await cursor.fetchone()
+
+            total += result[0]
+
+    return total
 
     month = ekb_now().strftime("%Y-%m")
 
@@ -364,7 +395,133 @@ async def reminder_loop():
 
         # 3 часа
         await asyncio.sleep(10800)
+# =========================
+# НЕДЕЛЬНЫЙ ОТЧЁТ
+# =========================
 
+async def get_week_count(user_id, weeks_ago=0):
+
+    start_date = (
+        ekb_now() - timedelta(days=7 * weeks_ago)
+    )
+
+    total = 0
+
+    async with aiosqlite.connect(DB_NAME) as db:
+
+        for i in range(7):
+
+            day = (
+                start_date - timedelta(days=i)
+            ).strftime("%Y-%m-%d")
+
+            cursor = await db.execute(
+                """
+                SELECT COUNT(*)
+                FROM smokes
+                WHERE user_id = ?
+                AND date LIKE ?
+                """,
+                (user_id, f"{day}%")
+            )
+
+            result = await cursor.fetchone()
+
+            total += result[0]
+
+    return total
+
+
+async def weekly_report_loop():
+
+    while True:
+
+        now = ekb_now()
+
+        # Понедельник 00:00
+        if (
+            now.weekday() == 0 and
+            now.hour == 0 and
+            now.minute == 0
+        ):
+
+            users = await get_all_users()
+
+            for user_id in users:
+
+                current_week = await get_week_count(
+                    user_id,
+                    0
+                )
+
+                previous_week = await get_week_count(
+                    user_id,
+                    1
+                )
+
+                # если прошлой недели нет
+                if previous_week == 0:
+                    previous_week = 3900
+
+                difference = (
+                    current_week - previous_week
+                )
+
+                percent = round(
+                    (
+                        difference / previous_week
+                    ) * 100,
+                    1
+                )
+
+                if percent < 0:
+
+                    result = (
+                        f"🔥 На "
+                        f"{abs(percent)}% "
+                        f"меньше затяжек"
+                    )
+
+                elif percent > 0:
+
+                    result = (
+                        f"⚠️ На "
+                        f"{percent}% "
+                        f"больше затяжек"
+                    )
+
+                else:
+
+                    result = (
+                        "➖ Без изменений"
+                    )
+
+                text = (
+                    f"📈 Недельная статистика\n\n"
+                    f"🚬 Эта неделя: "
+                    f"{current_week}\n"
+
+                    f"🚬 Прошлая неделя: "
+                    f"{previous_week}\n\n"
+
+                    f"{result}"
+                )
+
+                # Пользователю
+                await bot.send_message(
+                    user_id,
+                    text
+                )
+
+                # Админу
+                await bot.send_message(
+                    OWNER_ID,
+                    f"📨 Недельный отчёт\n\n{text}"
+                )
+
+            await asyncio.sleep(60)
+
+        await asyncio.sleep(15)
 # =========================
 # MAIN
 # =========================
@@ -378,6 +535,7 @@ async def main():
     asyncio.create_task(daily_report_loop())
     asyncio.create_task(month_report_loop())
     asyncio.create_task(reminder_loop())
+    asyncio.create_task(weekly_report_loop())
 
     await dp.start_polling(bot)
 
