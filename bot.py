@@ -1,6 +1,6 @@
 import asyncio
 from datetime import datetime, timedelta
-from zoneinfo import ZoneInfo
+from datetime import timezone, timedelta
 
 from aiogram import Bot, Dispatcher, F
 from aiogram.filters import Command
@@ -24,7 +24,7 @@ bot = Bot(token=TOKEN)
 dp = Dispatcher()
 
 # Екатеринбургское время
-EKB_TZ = ZoneInfo("Asia/Yekaterinburg")
+EKB_TZ = timezone(timedelta(hours=5))
 
 # Сколько рублей тратится в месяц
 MONTHLY_COST = 400
