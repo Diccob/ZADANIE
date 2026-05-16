@@ -85,9 +85,14 @@ async def get_day_count(user_id, days_ago=0):
 
         return result[0]
 
-async def get_month_count(user_id):
+async def get_month_count(user_id, months_ago=0):
 
-    month = ekb_now().strftime("%Y-%m")
+    now = ekb_now()
+
+    target_month = (
+        now.replace(day=1) -
+        timedelta(days=30 * months_ago)
+    ).strftime("%Y-%m")
 
     async with aiosqlite.connect(DB_NAME) as db:
 
@@ -98,44 +103,12 @@ async def get_month_count(user_id):
             WHERE user_id = ?
             AND date LIKE ?
             """,
-            (user_id, f"{month}%")
+            (user_id, f"{target_month}%")
         )
 
         result = await cursor.fetchone()
 
         return result[0]
-
-async def get_week_count(user_id, weeks_ago=0):
-
-    start_date = (
-        ekb_now() - timedelta(days=7 * weeks_ago)
-    )
-
-    total = 0
-
-    async with aiosqlite.connect(DB_NAME) as db:
-
-        for i in range(7):
-
-            day = (
-                start_date - timedelta(days=i)
-            ).strftime("%Y-%m-%d")
-
-            cursor = await db.execute(
-                """
-                SELECT COUNT(*)
-                FROM smokes
-                WHERE user_id = ?
-                AND date LIKE ?
-                """,
-                (user_id, f"{day}%")
-            )
-
-            result = await cursor.fetchone()
-
-            total += result[0]
-
-    return total
 
 async def get_all_users():
 
@@ -272,10 +245,13 @@ async def daily_report_loop():
 
                 difference = today - yesterday
 
-                percent = round(
-                    (abs(difference) / yesterday) * 100,
-                    1
-                )
+                if yesterday == 0:
+                    percent = 0
+                else:
+                    percent = round(
+                        (abs(difference) / yesterday) * 100,
+                        1
+                    )
 
                 # =========================
                 # ЛОГИКА
@@ -371,7 +347,7 @@ async def month_report_loop():
 
             for user_id in users:
 
-                month = await get_month_count(user_id)
+                month = await get_month_count(user_id, 1)
 
                 text = (
                     f"📅 Сводка за месяц\n\n"
@@ -426,8 +402,12 @@ async def reminder_loop():
 
 async def get_week_count(user_id, weeks_ago=0):
 
-    start_date = (
-        ekb_now() - timedelta(days=7 * weeks_ago)
+    now = ekb_now()
+
+    start_of_week = now - timedelta(days=now.weekday())
+
+    target_week_start = (
+        start_of_week - timedelta(weeks=weeks_ago)
     )
 
     total = 0
@@ -437,7 +417,7 @@ async def get_week_count(user_id, weeks_ago=0):
         for i in range(7):
 
             day = (
-                start_date - timedelta(days=i)
+                target_week_start + timedelta(days=i)
             ).strftime("%Y-%m-%d")
 
             cursor = await db.execute(
@@ -474,15 +454,15 @@ async def weekly_report_loop():
 
             for user_id in users:
 
-                current_week = await get_week_count(
-                    user_id,
-                    0
-                )
+               current_week = await get_week_count(
+                   user_id,
+                   1
+               )
 
-                previous_week = await get_week_count(
-                    user_id,
-                    1
-                )
+               previous_week = await get_week_count(
+                   user_id,
+                   2
+               )
 
                 # если прошлой недели нет
                 if previous_week == 0:
