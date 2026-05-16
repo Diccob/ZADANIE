@@ -525,7 +525,7 @@ async def heartbeat():
         await asyncio.sleep(60)
 
 
-async def on_startup():
+async def on_startup(app):
 
     await init_db()
 
@@ -552,34 +552,37 @@ async def on_startup():
     )
 
 
-async def on_shutdown():
+async def on_shutdown(app):
 
     await bot.delete_webhook()
 
     await bot.session.close()
 
 
-async def main():
+def main():
 
     app = web.Application()
+
+    app.on_startup.append(
+        on_startup
+    )
+
+    app.on_shutdown.append(
+        on_shutdown
+    )
 
     SimpleRequestHandler(
         dispatcher=dp,
         bot=bot
-    ).register(app, path=WEBHOOK_PATH)
+    ).register(
+        app,
+        path=WEBHOOK_PATH
+    )
 
     setup_application(
         app,
         dp,
         bot=bot
-    )
-
-    app.on_startup.append(
-        lambda _: on_startup()
-    )
-
-    app.on_shutdown.append(
-        lambda _: on_shutdown()
     )
 
     web.run_app(
@@ -591,4 +594,4 @@ async def main():
 
 if __name__ == "__main__":
 
-    asyncio.run(main())
+    main()
