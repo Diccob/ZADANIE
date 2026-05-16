@@ -443,7 +443,6 @@ async def weekly_report_loop():
 
         now = ekb_now()
 
-        # Понедельник 00:00
         if (
             now.weekday() == 0 and
             now.hour == 0 and
@@ -464,7 +463,6 @@ async def weekly_report_loop():
                     2
                 )
 
-                # если прошлой недели нет
                 if previous_week == 0:
                     previous_week = 3900
 
@@ -512,13 +510,11 @@ async def weekly_report_loop():
                     f"{result}"
                 )
 
-                # Пользователю
                 await bot.send_message(
                     user_id,
                     text
                 )
 
-                # Админу
                 await bot.send_message(
                     OWNER_ID,
                     f"📨 Недельный отчёт\n\n{text}"
