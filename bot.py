@@ -325,8 +325,23 @@ def main():
     SimpleRequestHandler(dispatcher=dp, bot=bot).register(app, path=WEBHOOK_PATH)
     setup_application(app, dp, bot=bot)
     
-    print(f"Запуск сервера на {WEB_SERVER_HOST}:{WEB_SERVER_PORT}")
-    web.run_app(app, host=WEB_SERVER_HOST, port=WEB_SERVER_PORT)
+    print(f"🔧 Запуск на {WEB_SERVER_HOST}:{WEB_SERVER_PORT}")
+    asyncio.run(_run_server(app))
 
-if __name__ == "__main__":
-    main()
+async def _run_server(app):
+    runner = web.AppRunner(app)
+    await runner.setup()
+    site = web.TCPSite(runner, host=WEB_SERVER_HOST, port=WEB_SERVER_PORT)
+    await site.start()
+    
+    print("✅ Сервер готов к приему вебхуков")
+    
+    try:
+        # Держим процесс живым
+        while True:
+            await asyncio.sleep(3600)
+    except asyncio.CancelledError:
+        print("🛑 Получен сигнал остановки")
+    finally:
+        await runner.cleanup()
+        print("🧹 Ресурсы освобождены")
