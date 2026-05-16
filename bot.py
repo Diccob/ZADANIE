@@ -28,7 +28,7 @@ bot = Bot(token=TOKEN)
 dp = Dispatcher()
 WEBHOOK_PATH = "/webhook"
 WEBHOOK_URL = (
-    "https://nl8.bothost.ru/api/webhook"
+    "https://nl8.bothost.ru/webhook"
 )
 
 WEB_SERVER_HOST = "0.0.0.0"
