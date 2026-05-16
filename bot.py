@@ -132,11 +132,17 @@ async def get_all_users():
 @dp.message(Command("start"))
 async def start(message: Message):
 
+    try:
+
+        await message.delete()
+
+    except Exception:
+        pass
+
     await message.answer(
         "🚬 Нажми кнопку если затянулся",
         reply_markup=main_keyboard()
     )
-
 
 # =========================
 # КНОПКА ЗАТЯЖКИ
@@ -148,10 +154,11 @@ async def smoke(callback: CallbackQuery):
     now = ekb_now().strftime("%Y-%m-%d %H:%M:%S")
 
     user_id = callback.from_user.id
-    username = callback.from_user.username or "нет"
+    username = callback.from_user.username
     first_name = callback.from_user.first_name
 
     async with aiosqlite.connect(DB_NAME) as db:
+
         await db.execute(
             """
             INSERT INTO smokes (user_id, date)
@@ -159,53 +166,53 @@ async def smoke(callback: CallbackQuery):
             """,
             (user_id, now)
         )
+
         await db.commit()
 
     today = await get_day_count(user_id, 0)
     month = await get_month_count(user_id)
 
-    # Потрачено
-    spent_today = round(today * COST_PER_PUFF, 2)
-    spent_month = round(month * COST_PER_PUFF, 2)
+    spent_today = round(
+        today * COST_PER_PUFF,
+        2
+    )
+
+    spent_month = round(
+        month * COST_PER_PUFF,
+        2
+    )
 
     # =========================
-    # РЕДАКТИРУЕМ СТАРЕНЬКОЕ СООБЩЕНИЕ
+    # ОБНОВЛЕНИЕ КНОПКИ
     # =========================
+
     try:
-        # ВНИМАНИЕ: Здесь должен быть ТОЛЬКО edit_text. 
-        # Если здесь написано answer — бот будет спамить новыми сообщениями!
+
         await callback.message.edit_text(
-            text=(
-                f"🚬 Записал\n\n"
-                f"📅 Сегодня: {today}\n"
-                f"🗓 За месяц: {month}\n\n"
-                f"💸 Потрачено сегодня: {spent_today}₽\n"
-                f"💰 Потрачено за месяц: {spent_month}₽"
-            ),
-            reply_markup=main_keyboard() # Кнопка возвращается в это же отредактированное сообщение
+            f"🚬 Записал\n\n"
+            f"📅 Сегодня: {today}\n"
+            f"🗓 За месяц: {month}\n\n"
+            f"💸 Потрачено сегодня: {spent_today}₽\n"
+            f"💰 Потрачено за месяц: {spent_month}₽",
+            reply_markup=main_keyboard()
         )
-    except Exception as e:
-        # Игнорируем ошибку Telegram "Message is not modified", если данные не изменились
-        pass
+
 
     # =========================
     # УВЕДОМЛЕНИЕ АДМИНУ
     # =========================
-    try:
-        await bot.send_message(
-            OWNER_ID,
-            f"🚨 Новая затяжка\n\n"
-            f"👤 Пользователь: {first_name}\n"
-            f"📎 Username: @{username}\n\n"
-            f"🚬 Сегодня: {today}\n"
-            f"📅 За месяц: {month}\n"
-            f"💸 Сегодня потрачено: {spent_today}₽\n"
-            f"⏰ Время: {ekb_now().strftime('%H:%M')}"
-        )
-    except Exception as e:
-        print(f"Не удалось отправить уведомление админу: {e}")
 
-    # Гасим часики анимации на кнопке
+    await bot.send_message(
+        OWNER_ID,
+        f"🚨 Новая затяжка\n\n"
+        f"👤 Пользователь: {first_name}\n"
+        f"📎 Username: @{username}\n\n"
+        f"🚬 Сегодня: {today}\n"
+        f"📅 За месяц: {month}\n"
+        f"💸 Сегодня потрачено: {spent_today}₽\n"
+        f"⏰ Время: {ekb_now().strftime('%H:%M')}"
+    )
+
     await callback.answer()
 
 
