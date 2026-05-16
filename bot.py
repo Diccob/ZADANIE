@@ -21,6 +21,7 @@ from database import init_db, DB_NAME
 # =========================
 
 bot = Bot(token=TOKEN)
+awaiting_updates = False
 dp = Dispatcher()
 
 # Екатеринбургское время
@@ -491,7 +492,13 @@ async def main():
         drop_pending_updates=True
     )
 
-    await dp.start_polling(bot)
+    global awaiting_updates
+
+    if not awaiting_updates:
+
+        awaiting_updates = True
+
+        await dp.start_polling(bot)
 
 
 if __name__ == "__main__":
