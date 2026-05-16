@@ -223,104 +223,117 @@ async def smoke(callback: CallbackQuery):
 async def daily_report_loop():
 
     while True:
+        try:
 
-        now = ekb_now()
+            now = ekb_now()
 
         # 00:00
-        if now.hour == 0 and now.minute == 0:
+            if now.hour == 0 and now.minute == 0:
 
-            users = await get_all_users()
+                users = await get_all_users()
 
-            for user_id in users:
+                for user_id in users:
 
-                today = await get_day_count(user_id, 1)
-                yesterday = await get_day_count(user_id, 2)
+                    today = await get_day_count(user_id, 1)
+                    yesterday = await get_day_count(user_id, 2)
 
                 # Если вчера нет данных
-                if yesterday == 0 and today != 0:
-                    yesterday = 400
+                    if yesterday == 0 and today != 0:
+                        yesterday = 400
 
-                difference = today - yesterday
+                    difference = today - yesterday
 
-                if yesterday == 0:
-                    percent = 0
-                else:
-                    percent = round(
-                        (abs(difference) / yesterday) * 100,
-                        1
-                    )
+                    if yesterday == 0:
+                        percent = 0
+                    else:
+                        percent = round(
+                            (abs(difference) / yesterday) * 100,
+                            1
+                        )
 
                 # =========================
                 # ЛОГИКА
                 # =========================
 
-                if difference < 0:
+                    if difference < 0:
 
-                    result = (
-                        f"🔥 На {percent}% "
-                        f"меньше затяжек"
-                    )
+                        result = (
+                            f"🔥 На {percent}% "
+                            f"меньше затяжек"
+                        )
 
-                    photo = "images/win.jpg"
+                        photo = "images/win.jpg"
 
-                elif difference > 0:
+                    elif difference > 0:
 
-                    result = (
-                        f"⚠️ На {percent}% "
-                        f"больше затяжек"
-                    )
+                        result = (
+                            f"⚠️ На {percent}% "
+                            f"больше затяжек"
+                        )
 
-                    photo = "images/lose.jpg"
+                        photo = "images/lose.jpg"
 
-                else:
+                    else:
 
-                    result = (
-                        "➖ Столько же, сколько вчера"
-                    )
+                        result = (
+                            "➖ Столько же, сколько вчера"
+                        )
 
-                    photo = "images/equal.jpg"
+                        photo = "images/equal.jpg"
 
                 # =========================
                 # ТЕКСТ
                 # =========================
 
-                text = (
-                    f"📊 Сводка за день\n\n"
-                    f"🚬 Сегодня: {today}\n"
-                    f"🚬 Вчера: {yesterday}\n\n"
-                    f"{result}"
-                )
+                    text = (
+                        f"📊 Сводка за день\n\n"
+                        f"🚬 Сегодня: {today}\n"
+                        f"🚬 Вчера: {yesterday}\n\n"
+                        f"{result}"
+                    )
 
                 # =========================
                 # ПОЛЬЗОВАТЕЛЬ
                 # =========================
 
-                with open(photo, "rb") as img:
+                    try:
+                        with open(photo, "rb") as img:
 
-                    await bot.send_photo(
-                        user_id,
-                        photo=img,
-                        caption=text
-                    )
+                            await bot.send_photo(
+                                user_id,
+                                photo=img,
+                                caption=text
+                            )
+                    except Exception as e:
+
+                        print(f"photo error: {e}")       
 
                 # =========================
                 # АДМИН
                 # =========================
 
-                with open(photo, "rb") as img:
+                    try:
+                        with open(photo, "rb") as img:
 
-                    await bot.send_photo(
-                        OWNER_ID,
-                        photo=img,
-                        caption=(
-                            f"📨 Отчёт пользователя\n\n"
-                            f"{text}"
-                        )
-                    )
+                            await bot.send_photo(
+                                OWNER_ID,
+                                photo=img,
+                                caption=(
+                                    f"📨 Отчёт пользователя\n\n"
+                                    f"{text}"
+                                )
+                            )
+                    except Exception as e:
+
+                        print(f"admin photo error: {e}")
 
             # защита от спама
-            await asyncio.sleep(60)
-
+                await asyncio.sleep(60)
+        except Exception as e:
+            
+            print(f"daily_report_loop error: {e}")
+            await asyncio.sleep(5)
+            
         await asyncio.sleep(15)
 
 
@@ -331,38 +344,43 @@ async def daily_report_loop():
 async def month_report_loop():
 
     while True:
+        try:
 
-        now = ekb_now()
+            now = ekb_now()
 
-        if (
-            now.day == 1 and
-            now.hour == 0 and
-            now.minute == 0
-        ):
+            if (
+                now.day == 1 and
+                now.hour == 0 and
+                now.minute == 0
+            ):
 
-            users = await get_all_users()
+                users = await get_all_users()
 
-            for user_id in users:
+                for user_id in users:
 
-                month = await get_month_count(user_id, 1)
+                    month = await get_month_count(user_id, 1)
 
-                text = (
-                    f"📅 Сводка за месяц\n\n"
-                    f"🚬 Всего затяжек: {month}\n"
-                    f"💸 Потрачено: {MONTHLY_COST}₽"
-                )
+                    text = (
+                        f"📅 Сводка за месяц\n\n"
+                        f"🚬 Всего затяжек: {month}\n"
+                        f"💸 Потрачено: {MONTHLY_COST}₽"
+                    )
 
                 # Пользователю
-                await bot.send_message(user_id, text)
+                    await bot.send_message(user_id, text)
 
                 # Админу
-                await bot.send_message(
-                    OWNER_ID,
-                    f"📨 Месячный отчёт\n\n{text}"
-                )
+                    await bot.send_message(
+                        OWNER_ID,
+                        f"📨 Месячный отчёт\n\n{text}"
+                    )
 
-            await asyncio.sleep(60)
-
+                await asyncio.sleep(60)
+        except Exception as e:
+            
+            print(f"month_report_loop error: {e}")
+            await asyncio.sleep(5)
+            
         await asyncio.sleep(15)
 
 # =========================
@@ -371,22 +389,26 @@ async def month_report_loop():
 
 async def reminder_loop():
     while True:
+        try:
         # Даём боту «отдохнуть» перед следующим кругом напоминаний
-        for _ in range(10800):
-            await asyncio.sleep(1) # 3 часа (лучше спать НАЧАЛЕ цикла)
+            for _ in range(10800):
+                await asyncio.sleep(1) # 3 часа (лучше спать НАЧАЛЕ цикла)
 
-        users = await get_all_users()
-        for user_id in users:
-            try:
-                await bot.send_message(
-                    user_id,
-                    "⏰ Не забывай отмечать затяжки"
-                )
+            users = await get_all_users()
+            for user_id in users:
+                try:
+                    await bot.send_message(
+                        user_id,
+                        "⏰ Не забывай отмечать затяжки"
+                    )
                 # Микро-пауза между пользователями, чтобы Telegram не забанил за спам
-                await asyncio.sleep(0.05) 
-            except Exception as e:
-                print(f"Ошибка отправки напоминания пользователю {user_id}: {e}")
+                    await asyncio.sleep(0.05) 
+                except Exception as e:
+                    print(f"Ошибка отправки напоминания пользователю {user_id}: {e}")
+        except Exception as e:
 
+            print(f"reminder_loop error: {e}")
+            await asyncio.sleep(5)
 
 # =========================
 # НЕДЕЛЬНЫЙ ОТЧЁТ
@@ -418,57 +440,63 @@ async def get_week_count(user_id, weeks_ago=0):
 
 async def weekly_report_loop():
     while True:
-        now = ekb_now()
+        try:
+            now = ekb_now()
 
         # Понедельник, 00:00
-        if (
-            now.weekday() == 0 and
-            now.hour == 0 and
-            now.minute == 0
-        ):
-            users = await get_all_users()
+            if (
+                now.weekday() == 0 and
+                now.hour == 0 and
+                now.minute == 0
+            ):
+                users = await get_all_users()
 
-            for user_id in users:
+                for user_id in users:
                 # 1 неделя назад (которая только что закончилась)
-                current_week = await get_week_count(user_id, 1)
+                    current_week = await get_week_count(user_id, 1)
                 # 2 недели назад
-                previous_week = await get_week_count(user_id, 2)
+                    previous_week = await get_week_count(user_id, 2)
 
-                if previous_week == 0:
-                    previous_week = BASELINE_WEEKLY_PUFFS # Используем константу из начала кода
+                    if previous_week == 0:
+                        previous_week = BASELINE_WEEKLY_PUFFS # Используем константу из начала кода
 
-                difference = current_week - previous_week
+                    difference = current_week - previous_week
 
-                percent = round((difference / previous_week) * 100, 1)
+                    percent = round((difference / previous_week) * 100, 1)
 
-                if percent < 0:
-                    result = f"🔥 На {abs(percent)}% меньше затяжек"
-                elif percent > 0:
-                    result = f"⚠️ На {percent}% больше затяжек"
-                else:
-                    result = "➖ Без изменений"
+                    if percent < 0:
+                        result = f"🔥 На {abs(percent)}% меньше затяжек"
+                    elif percent > 0:
+                        result = f"⚠️ На {percent}% больше затяжек"
+                    else:
+                        result = "➖ Без изменений"
 
                 # Сделали текст более понятным для человека в понедельник утром
-                text = (
-                    f"📈 Недельная статистика\n\n"
-                    f"🚬 Прошедшая неделя: {current_week}\n"
-                    f"🚬 Позапрошлая неделя: {previous_week}\n\n"
-                    f"{result}"
-                )
-
-                try:
-                    await bot.send_message(user_id, text)
-                    await bot.send_message(
-                        OWNER_ID,
-                        f"📨 Недельный отчёт\n\n{text}"
+                    text = (
+                        f"📈 Недельная статистика\n\n"
+                        f"🚬 Прошедшая неделя: {current_week}\n"
+                        f"🚬 Позапрошлая неделя: {previous_week}\n\n"
+                        f"{result}"
                     )
-                    await asyncio.sleep(0.05)
-                except Exception as e:
-                    print(f"Ошибка отправки недельного отчёта: {e}")
+
+                    try:
+                        await bot.send_message(user_id, text)
+                        await bot.send_message(
+                            OWNER_ID,
+                            f"📨 Недельный отчёт\n\n{text}"
+                        )
+                        await asyncio.sleep(0.05)
+                    except Exception as e:
+                        print(f"Ошибка отправки недельного отчёта: {e}")
 
             # Защита от повторного срабатывания в ту же минуту
-            await asyncio.sleep(60)
+                await asyncio.sleep(60)
 
+        except Exception as e:
+            
+            print(f"weekly_report_loop error: {e}")
+            await asyncio.sleep(5)
+            
         await asyncio.sleep(15)
 
 
