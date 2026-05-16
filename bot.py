@@ -336,6 +336,34 @@ async def month_report_loop():
 
         await asyncio.sleep(15)
 
+# =========================
+# НАПОМИНАНИЯ
+# =========================
+
+async def reminder_loop():
+
+    while True:
+
+        users = await get_all_users()
+
+        for user_id in users:
+
+            try:
+
+                await bot.send_message(
+                    user_id,
+                    "⏰ Не забывай отмечать затяжки"
+                )
+
+            except Exception as e:
+
+                print(
+                    f"Ошибка отправки "
+                    f"напоминания: {e}"
+                )
+
+        # 3 часа
+        await asyncio.sleep(10800)
 
 # =========================
 # MAIN
@@ -349,6 +377,7 @@ async def main():
 
     asyncio.create_task(daily_report_loop())
     asyncio.create_task(month_report_loop())
+    asyncio.create_task(reminder_loop())
 
     await dp.start_polling(bot)
 
