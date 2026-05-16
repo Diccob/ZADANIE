@@ -372,7 +372,8 @@ async def month_report_loop():
 async def reminder_loop():
     while True:
         # Даём боту «отдохнуть» перед следующим кругом напоминаний
-        await asyncio.sleep(10800) # 3 часа (лучше спать НАЧАЛЕ цикла)
+        for _ in range(10800):
+            await asyncio.sleep(1) # 3 часа (лучше спать НАЧАЛЕ цикла)
 
         users = await get_all_users()
         for user_id in users:
@@ -473,25 +474,75 @@ async def weekly_report_loop():
 
 
 # =========================
+# HEARTBEAT
+# =========================
+
+async def heartbeat():
+
+    while True:
+
+        print("heartbeat")
+
+        await asyncio.sleep(60)
+
+
+# =========================
 # MAIN
 # =========================
 
 async def main():
-    # Инициализируем БД
+
     await init_db()
 
-    print("Бот успешно запущен и слушает сервер...")
+    print("Бот запущен")
 
-    # Запускаем фоновые задачи
-    asyncio.create_task(daily_report_loop())
-    asyncio.create_task(month_report_loop())
-    asyncio.create_task(reminder_loop())
-    asyncio.create_task(weekly_report_loop())
+    await bot.delete_webhook(
+        drop_pending_updates=True
+    )
 
-    # Просто удаляем вебхук без жесткой очистки очереди обновлений
-    await bot.delete_webhook()
+    # =========================
+    # BACKGROUND TASKS
+    # =========================
+
+    daily_task = asyncio.create_task(
+        daily_report_loop()
+    )
+
+    month_task = asyncio.create_task(
+        month_report_loop()
+    )
+
+    reminder_task = asyncio.create_task(
+        reminder_loop()
+    )
+
+    weekly_task = asyncio.create_task(
+        weekly_report_loop()
+    )
+
+    heartbeat_task = asyncio.create_task(
+        heartbeat()
+    )
+
+    # =========================
+    # POLLING
+    # =========================
 
     try:
+
         await dp.start_polling(bot)
+
     finally:
+
+        daily_task.cancel()
+        month_task.cancel()
+        reminder_task.cancel()
+        weekly_task.cancel()
+        heartbeat_task.cancel()
+
         await bot.session.close()
+
+
+if __name__ == "__main__":
+
+    asyncio.run(main())
