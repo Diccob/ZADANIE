@@ -1,3 +1,25 @@
+import signal
+import sys
+import traceback
+
+# Перехват сигналов от ОС/хостинга
+def signal_handler(signum, frame):
+    print(f"⚠️ Получен сигнал {signum}", file=sys.stderr)
+    sys.stderr.flush()
+
+signal.signal(signal.SIGTERM, signal_handler)
+signal.signal(signal.SIGINT, signal_handler)
+
+# Глобальный перехват необработанных исключений
+def global_exception_handler(exc_type, exc_value, exc_traceback):
+    if issubclass(exc_type, KeyboardInterrupt):
+        return
+    print(f"❌ КРИТИЧЕСКАЯ ОШИБКА: {exc_type.__name__}: {exc_value}", file=sys.stderr)
+    traceback.print_exception(exc_type, exc_value, exc_traceback)
+    sys.stderr.flush()
+
+sys.excepthook = global_exception_handler
+
 import random
 import asyncio
 import os  # ← ДОБАВИТЬ
@@ -318,6 +340,9 @@ async def on_shutdown(app):
     # Больше ничего не нужно — aiogram сам завершит диспетчер
 
 def main():
+    """Точка входа — должна быть синхронной для bothost.ru"""
+    print(f"🚀 Старт бота | PID: {os.getpid()}")
+    
     app = web.Application()
     app.on_startup.append(on_startup)
     app.on_shutdown.append(on_shutdown)
@@ -325,23 +350,34 @@ def main():
     SimpleRequestHandler(dispatcher=dp, bot=bot).register(app, path=WEBHOOK_PATH)
     setup_application(app, dp, bot=bot)
     
-    print(f"🔧 Запуск на {WEB_SERVER_HOST}:{WEB_SERVER_PORT}")
-    asyncio.run(_run_server(app))
+    # Запускаем сервер через asyncio.run() — это гарантированно блокирует процесс
+    try:
+        asyncio.run(_run_server(app))
+    except KeyboardInterrupt:
+        print("👋 Прервано пользователем")
+    except Exception as e:
+        print(f"💥 Сервер упал: {e}", file=sys.stderr)
+        raise
+    finally:
+        print("🔚 Процесс завершён")
 
 async def _run_server(app):
+    """Запуск aiohttp-сервера с вечным циклом"""
     runner = web.AppRunner(app)
     await runner.setup()
+    
     site = web.TCPSite(runner, host=WEB_SERVER_HOST, port=WEB_SERVER_PORT)
     await site.start()
     
-    print("✅ Сервер готов к приему вебхуков")
+    print(f"✅ Сервер слушает {WEB_SERVER_HOST}:{WEB_SERVER_PORT}")
+    sys.stdout.flush()  # Важно для хостингов с буферизацией логов
     
+    # 🔥 Вечный цикл — не даём процессу завершиться
     try:
-        # Держим процесс живым
         while True:
             await asyncio.sleep(3600)
     except asyncio.CancelledError:
-        print("🛑 Получен сигнал остановки")
+        print("⚠️ Цикл прерван, начинаем очистку...")
     finally:
         await runner.cleanup()
-        print("🧹 Ресурсы освобождены")
+        print("🧹 Сервер остановлен")
