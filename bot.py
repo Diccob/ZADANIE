@@ -492,14 +492,10 @@ async def main():
         drop_pending_updates=True
     )
 
-    global awaiting_updates
-
-    if not awaiting_updates:
-
-        awaiting_updates = True
+    try:
 
         await dp.start_polling(bot)
 
+    finally:
 
-if __name__ == "__main__":
-    asyncio.run(main())
+        await bot.session.close()
