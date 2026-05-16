@@ -31,6 +31,11 @@ MONTHLY_COST = 400
 
 # Сколько примерно затяжек с одной жижки
 PUFFS_PER_MONTH = 6000
+# Цена одной затяжки
+COST_PER_PUFF = round(
+    MONTHLY_COST / PUFFS_PER_MONTH,
+    4
+)
 
 # =========================
 # КЛАВИАТУРА
@@ -179,11 +184,22 @@ async def smoke(callback: CallbackQuery):
     today = await get_today_count(user_id)
     month = await get_month_count(user_id)
 
-    cost_per_puff = MONTHLY_COST / PUFFS_PER_MONTH
+# Цена одной затяжки
+    cost_per_puff = round(
+        MONTHLY_COST / PUFFS_PER_MONTH,
+        4
+    )
 
-    spent_today = round(today * cost_per_puff, 2)
+# Потрачено
+    spent_today = round(
+        today * cost_per_puff,
+        2
+    )
 
-    spent_month = round(month * cost_per_puff, 2)
+    spent_month = round(
+        month * cost_per_puff,
+        2
+    )
 
     # =========================
     # СООБЩЕНИЕ ПОЛЬЗОВАТЕЛЮ
