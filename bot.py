@@ -8,7 +8,8 @@ from aiogram.types import (
     Message,
     CallbackQuery,
     InlineKeyboardMarkup,
-    InlineKeyboardButton
+    InlineKeyboardButton,
+    FSInputFile  # Добавили корректный импорт для работы с файлами в aiogram 3
 )
 
 import aiosqlite
@@ -161,43 +162,47 @@ async def smoke(callback: CallbackQuery):
         )
 
         alert_text = None
-        # Всплывающее уведомление строго на 100-ю затяжку
         if today == 100:
             alert_text = "🚨 СТОП! Это твоя 100-я затяжка за сегодня! Это очень плохо, тебе нужно сдерживаться!"
 
         # ПРОВЕРКА НА ЛИМИТ ВАРНИНГА (100+ затяжек)
         if today >= 100:
             text += "\n\n⚠️ <b>ЛИМИТ ПРЕВЫШЕН!</b>\n100+ затяжек за день — это очень плохо. Твоему организму тяжело, постарайся сдерживать себя!"
-            photo_path = "images/puff.jpg"
-
-            try:
-                with open(photo_path, "rb") as img:
-                    # Если сообщение уже является картинкой (например, 101-я затяжка), просто меняем описание
-                    if callback.message.photo:
-                        await callback.message.edit_caption(
-                            caption=text,
-                            reply_markup=main_keyboard(),
-                            parse_mode="HTML"
-                        )
-                    # Если это текстовое сообщение (переход с 99 на 100), удаляем текст и шлем фото
-                    else:
-                        try:
-                            await callback.message.delete()
-                        except Exception:
-                            pass
-                        
-                        await callback.message.answer_photo(
-                            photo=img,
-                            caption=text,
-                            reply_markup=main_keyboard(),
-                            parse_mode="HTML"
-                        )
-            except FileNotFoundError:
-                # На случай, если забыл загрузить puff.jpg на хостинг — бот продолжит работать текстом
+            
+            # Если это ОЖЕ сообщение с фото (101-я затяжка и далее)
+            if callback.message.photo:
                 try:
-                    await callback.message.edit_text(text, reply_markup=main_keyboard(), parse_mode="HTML")
-                except Exception:
-                    pass
+                    await callback.message.edit_caption(
+                        caption=text,
+                        reply_markup=main_keyboard(),
+                        parse_mode="HTML"
+                    )
+                except Exception as e:
+                    print(f"Ошибка обновления капшна фото: {e}")
+            
+            # Если это был ТЕКСТ (ровно 100-я затяжка), переключаемся на режим фото
+            else:
+                try:
+                    photo_file = FSInputFile("images/puff.jpg")
+                    # Сначала отправляем КРАСИВОЕ новое сообщение с фото
+                    await callback.message.answer_photo(
+                        photo=photo_file,
+                        caption=text,
+                        reply_markup=main_keyboard(),
+                        parse_mode="HTML"
+                    )
+                    # И только если оно отправилось успешно — удаляем старый текст
+                    try:
+                        await callback.message.delete()
+                    except Exception:
+                        pass
+                except Exception as e:
+                    print(f"Не удалось отправить puff.jpg (возможно нет файла): {e}")
+                    # Фоллбек: если картинка сломалась/исчезла, просто обновляем старый текст
+                    try:
+                        await callback.message.edit_text(text, reply_markup=main_keyboard(), parse_mode="HTML")
+                    except Exception:
+                        pass
         else:
             # ОБЫЧНЫЙ РЕЖИМ (до 100 затяжек)
             try:
@@ -221,7 +226,6 @@ async def smoke(callback: CallbackQuery):
         except Exception as e:
             print(f"Не удалось отправить уведомление админу: {e}")
 
-        # Закрываем часы анимации на кнопке Telegram
         await callback.answer(text=alert_text, show_alert=True if alert_text else False)
 
     except Exception as e:
@@ -237,7 +241,6 @@ async def daily_report_loop():
         try:
             now = ekb_now()
 
-            # 00:00
             if now.hour == 0 and now.minute == 0:
                 users = await get_all_users()
 
@@ -273,18 +276,17 @@ async def daily_report_loop():
                             f"{result}"
                         )
 
-                        # Отправка пользователю
+                        # Безопасная отправка через FSInputFile
                         try:
-                            with open(photo, "rb") as img:
-                                await bot.send_photo(user_id, photo=img, caption=text)
-                        except (FileNotFoundError, Exception):
+                            photo_file = FSInputFile(photo)
+                            await bot.send_photo(user_id, photo=photo_file, caption=text)
+                        except Exception:
                             await bot.send_message(user_id, text)
 
-                        # Отправка админу
                         try:
-                            with open(photo, "rb") as img:
-                                await bot.send_photo(OWNER_ID, photo=img, caption=f"📨 Отчёт пользователя\n\n{text}")
-                        except (FileNotFoundError, Exception):
+                            photo_file = FSInputFile(photo)
+                            await bot.send_photo(OWNER_ID, photo=photo_file, caption=f"📨 Отчёт пользователя\n\n{text}")
+                        except Exception:
                             await bot.send_message(OWNER_ID, f"📨 Отчёт пользователя\n\n{text}")
 
                         await asyncio.sleep(0.05)
@@ -292,7 +294,6 @@ async def daily_report_loop():
                     except Exception as user_err:
                         print(f"Ошибка дневного отчета для {user_id}: {user_err}")
 
-                # Защита от спама внутри одной минуты
                 await asyncio.sleep(60)
 
         except Exception as global_err:
@@ -344,7 +345,6 @@ async def weekly_report_loop():
         try:
             now = ekb_now()
 
-            # Понедельник, 00:00
             if now.weekday() == 0 and now.hour == 0 and now.minute == 0:
                 users = await get_all_users()
 
@@ -416,7 +416,6 @@ async def main():
         await init_db()
         print("База данных подключена. Бот запускается...")
 
-        # Запускаем фоновые задачи
         asyncio.create_task(daily_report_loop())
         asyncio.create_task(month_report_loop())
         asyncio.create_task(reminder_loop())
